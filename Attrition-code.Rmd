@@ -1,0 +1,296 @@
+---
+title: "IMB Employee Attrition"
+author: "yingrui Lyu"
+date: "2020/12/20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+---
+#reload needed package
+```{r packages, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(plyr)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+library(gbm)
+library(survival)
+library(pROC)
+library(DMwR)
+library(scales)
+```
+---
+#set a workpath to red the data
+```{r}
+Attr.df <- read.csv('D:/Employee_Attritiondata/EmployeeAttrition.csv')
+head(Attr.df)
+summary(Attr.df)
+```
+---
+#3.Univariate Analysis
+3.1 Explore the analysis of gender, age, length of service, number of companies, and time limit in the company
+# g1 Employee’s age distribution
+# g2 The relationship between the number of companies that the quit employee has worked
+# g3 The distribution of quit employees’ service age
+# g4 Distribution of the overall working years of employees leaving
+```{r}
+g1 <- ggplot(Attr.df,aes(x=Age,fill=Attrition))+
+  geom_density(alpha=0.7)
+
+g2 <- ggplot(Attr.df,aes(x=NumCompaniesWorked,fill=Attrition))+
+  geom_density(alpha=0.7)
+
+g3 <- ggplot(Attr.df,aes(x=YearsAtCompany,fill=Attrition))+
+  geom_density(alpha=0.7)
+
+g4 <- ggplot(Attr.df,aes(x=TotalWorkingYears,fill=Attrition))+
+  geom_density(alpha=0.7)
+grid.arrange(g1,g2,g3,g4,ncol=2,nrow=2)
+```
+---
+
+#g5 Gender distribution of resigning employees
+# g6 Position level distribution of resigning employees 
+# g7 Educational background distribution of resigning employees 
+# g8 Departmental distribution of resigning employees
+```{r}
+g5 <- ggplot(Attr.df, aes(x= Gender,fill = Attrition)) + 
+  geom_bar(position = "fill") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+
+g6 <-ggplot(Attr.df, aes(x= JobLevel,fill = Attrition)) + geom_bar(position = "fill") + labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g7 <- ggplot(Attr.df, aes(x= Education,fill = Attrition)) +geom_bar(position = "fill") + labs(y="Percentage") + scale_y_continuous(labels=percent) 
+ 
+g8_ <- ggplot(Attr.df, aes(x= Department,fill = Attrition)) + geom_bar(position = "fill") + labs(y="Percentage") + scale_y_continuous(labels=percent) 
+g8=g8_+ theme(axis.text.x = element_text(angle = 15,hjust=1))
+grid.arrange(g5, g6, g7, g8, ncol = 2, nrow = 2)
+```
+---
+# g11 The relationship between resigning employees and salary increase 
+# g12 The relationship between resigning employees and the number of training 
+# g13 The relationship between resigning employees and annual promotion 
+# g14 The relationship between resigning employees and stock options
+```{r}
+g11 <- ggplot(Attr.df, aes(x = PercentSalaryHike, fill = Attrition)) + 
+  geom_density(alpha = 0.7)
+
+g12 <- ggplot(Attr.df, aes(x= TrainingTimesLastYear,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g13 <- ggplot(Attr.df, aes(x = YearsSinceLastPromotion, fill = Attrition)) + 
+  geom_density(alpha = 0.7)
+
+g14 <- ggplot(Attr.df, aes(x= StockOptionLevel,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+grid.arrange(g11, g12, g13, g14, ncol = 2)
+```
+---
+# g15 The relationship between resigning employees and job satisfaction 
+# g16 The relationship between resigning employees and colleague satisfaction 
+# g17 The relationship between resigning employees and job satisfaction
+```{r}
+g15 <- ggplot(Attr.df, aes(x= JobSatisfaction,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g16 <- ggplot(Attr.df, aes(x= RelationshipSatisfaction,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g17 <- ggplot(Attr.df, aes(x= EnvironmentSatisfaction,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+grid.arrange(g15, g16,g17, ncol = 3)
+```
+
+---
+# g18 The relationship between resigned employees and overtime 
+# g19 The relationship between resigned employees and work life 
+# g20 The relationship between resigned employees and business trip 
+# g21 The relationship between resigned employees and working distance
+```{r}
+g18 <- ggplot(Attr.df, aes(x= OverTime,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g19 <- ggplot(Attr.df, aes(x= WorkLifeBalance,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+g20_ <- ggplot(Attr.df, aes(x= BusinessTravel,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+g20=g20_+ theme(axis.text.x = element_text(angle = 30, hjust=1))#transfer x.lable axis
+
+g21 <- ggplot(Attr.df,aes(x=DistanceFromHome,fill=Attrition))+
+  geom_density(alpha=0.7)
+
+grid.arrange(g18, g19,g20,g21, ncol = 2)
+```
+
+---
+# g9 The relationship between resigned employees and monthly salary 
+# g10 The relationship between resigned employees and job level
+```{r}
+g9 <- ggplot(Attr.df,aes(x=MonthlyIncome,fill=Attrition))+
+  geom_density(alpha=0.7)
+
+
+g10 <- ggplot(Attr.df, aes(x= JobInvolvement,  group=Attrition)) + 
+  geom_bar(aes(y = ..prop.., fill = Attrition), 
+           stat="count", alpha = 0.7,position = "identity",color="black") +
+  labs(y="Percentage") + scale_y_continuous(labels=percent) 
+
+grid.arrange(g9, g10, ncol = 2)
+```
+---
+#3.6 Further analysis of the relationship between monthly salary and job level
+```{r}
+ggplot(Attr.df,aes(x=JobInvolvement,y=MonthlyIncome,group=JobInvolvement))+
+  geom_boxplot(aes(fill=factor(..x..)),alpha=0.7)+
+  theme(legend.position = 'none',plot.title = element_text(hjust = 0.5))+
+  facet_grid(~Attrition)+ggtitle('Attrition')
+```
+---
+# Remove unnecessary reasons in the data set
+```{r}
+levels(Attr.df$JobRole) <- c("HC", "HR", "Lab", "Man", "MDir", "RsD", "RsSci", "SlEx", "SlRep")
+levels(Attr.df$EducationField) <- c("HR", "LS", "MRK", "MED", "NA", "TD")
+Attr.df <- Attr.df[c(-9,-10,-22,-27)]
+```
+
+# Divide the data set into training set and test set
+```{r}
+n <- nrow(Attr.df)
+rnd <- sample(n,n*0.7)
+train <- Attr.df[rnd,]
+test <- Attr.df[-rnd,]
+```
+# build GBM model
+```{r}
+set.seed(3443)
+ctrl <- trainControl(method = 'cv',number=10,summaryFunction = twoClassSummary,classProbs = T)
+gbmfit <- train(Attrition~.,data=train,method='gbm',verbose=F,metric='ROC',trControl=ctrl)
+gbmpreds <- predict(gbmfit,test)
+Atr_factor<-factor(test$Attrition)#为了避免将字符串改为数字过程中产生NA，先用factor函数转换
+gbmpreds_factor<-factor(gbmpreds)
+rocgbm <- roc(as.numeric(Atr_factor),as.numeric(gbmpreds_factor), plot=TRUE, print.thres=TRUE, print.auc=TRUE)
+rocgbm$auc
+prop.table(table(test$Attrition, gbmpreds, dnn = c("Actual", "Predicted")),1)
+```
+---
+#need to optimize GBM
+# to set the same seed as fomer
+```{r}
+ctrl$seeds <- gbmfit$control$seeds
+```
+# weighted random sampling-GBM
+```{r}
+model_weights <- ifelse(train$Attrition == 'No',
+                        (1/table(train$Attrition)[1]),
+                        (1/table(train$Attrition)[2]))
+
+
+weightedleft <- train(Attrition ~ .,
+                      data=train,
+                      method='gbm',
+                      verbose=F,
+                      weights=model_weights,
+                      metric='ROC',
+                      trControl=ctrl)
+
+weightedpreds <- predict(weightedleft,test)
+Atr_factor<-factor(test$Attrition)
+weightedpreds_factor<-factor(weightedpreds)
+rocweight <- roc(as.numeric(Atr_factor),as.numeric(weightedpreds_factor))
+plot(rocweight)
+rocweight$auc
+```
+# up_sampling
+```{r}
+ctrl$sampling <- 'up'
+set.seed(3433)
+upfit <- train(Attrition ~., 
+               data = train, 
+               method = "gbm", 
+               verbose = FALSE, 
+               metric = "ROC", 
+               trControl = ctrl)
+
+uppreds <- predict(upfit, test)
+#Atr_factor<-factor(test$Attrition)
+uppreds_factor<-factor(uppreds)
+rocup <- roc(as.numeric(Atr_factor), as.numeric(uppreds_factor))
+rocup$auc
+prop.table(table(test$Attrition, uppreds, dnn = c("Actual", "Predicted")),1)
+```
+# down_sampling
+```{r}
+ctrl$sampling <- 'down'
+set.seed(3433)
+downfit <- train(Attrition ~., 
+                 data = train, 
+                 method = "gbm", 
+                 verbose = FALSE, 
+                 metric = "ROC", 
+                 trControl = ctrl)
+
+downpreds <- predict(downfit, test)
+Atr_factor<-factor(test$Attrition)
+downpreds_factor<-factor(downpreds)
+rocdown <- roc(as.numeric(Atr_factor), as.numeric(downpreds_factor))
+rocdown$auc
+prop.table(table(test$Attrition, downpreds, dnn = c("Actual", "Predicted")),1)
+prop.table(table(test$Attrition, weightedpreds, dnn = c("Actual", "Predicted")),1)
+```
+---
+
+# Use model to predict turnover 
+#5.1 See what factors affect employee turnover
+```{r}
+varImp(upfit)
+```
+
+##Predict the turnover rate of employees with high work input and low monthly salary
+```{r}
+upfitprobs <- predict(upfit,test,type = 'prob')
+test$Prediction <- upfitprobs$Yes
+ggplot(test,
+       aes(x=MonthlyIncome,y=Prediction,color=factor(JobInvolvement)))+
+  geom_point(alpha=0.7)+
+  geom_smooth(method = 'lm')+
+  facet_wrap(~JobInvolvement)+
+  theme(legend.position = 'none')+
+  ggtitle('JobInvolvement')+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+#Forecast those positions with the highest turnover rate
+```{r}
+p=ggplot(test,aes(x=JobRole,y=Prediction,fill=JobRole))+
+  geom_boxplot(alpha=0.5)+
+  theme(legend.position = 'none')+
+  scale_y_continuous(labels = percent)
+p+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))#transfer x.lable axis
+```
